@@ -107,12 +107,24 @@ def get_standardize_dates(**kwargs):
     return np.asarray(ret)
 
 
-def get_daily_case_increment(std_dates):
+def get_daily_diff(std_dates, method_name):
     ret = dict()
     for item in data:
         corona_info = item['corona_info']
-        daily_cases = [corona_info.get_num_positive(tp) for tp in std_dates]
-        ret[item['state_code']] = np.diff(daily_cases)
+        target = [getattr(corona_info, method_name)(tp) for tp in std_dates]
+        ret[item['state_code']] = np.diff(target)
+
+    return ret
+
+def get_daily_case_increment(std_dates):
+    return get_daily_diff(std_dates, 'get_num_positive')
+
+def get_state_data_by_method_name(std_dates, method_name):
+    ret = dict()
+    for item in data:
+        corona_info = item['corona_info']
+        target = [getattr(corona_info, method_name)(tp) for tp in std_dates]
+        ret[item['state_code']] = target
 
     return ret
 
@@ -158,9 +170,48 @@ def graph_daily_increment(ax, std_dates, key_sum):
     ax.set_xlim((valid_dates[0], valid_dates[-1]))
     ax.get_xaxis().set_major_locator(LinearLocator(numticks=12))
     ax.get_xaxis().set_major_formatter(DateFormatter('%Y-%m-%d'))
+    ax.get_xaxis().set_tick_params(rotation=90)
+    ax.ticklabel_format(axis='y', style='plain')
 
     ax.stackplot(valid_dates, vs, labels=ks)
-    ax.xaxis.set_tick_params(rotation=90)
+
+
+
+def graph_four_region_layout(axs, std_dates, graph_data):
+    assert len(graph_data) == 4
+
+    graph_lst = [item for item in graph_data.items()]
+    graph_lst.sort(key=lambda x : x[0])
+
+    highest_y = 0
+
+    for ind in range(4):
+        row = ind // 2
+        col = ind % 2
+
+        k, v = graph_lst[ind]
+
+        axs[row, col].set_title(k)
+        my_color = 'C{}'.format(ind)
+
+        axs[row, col].plot(std_dates, v, color=my_color)
+        axs[row, col].fill_between(std_dates, 0, v, color=my_color)
+
+        axs[row, col].set_xlim((std_dates[0], std_dates[-1]))
+        axs[row, col].get_xaxis().set_major_locator(LinearLocator(numticks=12))
+        axs[row, col].get_xaxis().set_major_formatter(DateFormatter('%Y-%m-%d'))
+        axs[row, col].get_xaxis().set_tick_params(rotation=90)
+        axs[row, col].ticklabel_format(axis='y', style='plain')
+
+        low, high = axs[row, col].get_ylim()
+        highest_y = max(highest_y, high)
+
+    for ind in range(4):
+        row = ind // 2
+        col = ind % 2
+
+        axs[row, col].set_ylim((0, highest_y))
+
 
 
 if __name__ == '__main__':
