@@ -6,7 +6,8 @@ from ansi2html import Ansi2HTMLConverter
 import base64
 
 def generate_and_save_graph():
-    get_offline_data() # debug only
+    #get_offline_data() # debug only
+    get_online_data()
     change_data_interpolation_type('slinear')
     std_dates = get_standardize_dates()
     daily_case_increment = get_daily_case_increment(std_dates)
@@ -40,7 +41,7 @@ previous_io_html_css = converter.produce_headers()
 with open('graph.svg', 'rb') as infile:
     svg_data = infile.read()
 
-svg_b64 = base64.b64encode(svg_data).decode('ansi')
+svg_b64 = base64.b64encode(svg_data).decode('utf8')
 image_data = r'''<div style="text-align:center;">
 <img src="data:image/svg+xml;base64,{}" >
 </div>
