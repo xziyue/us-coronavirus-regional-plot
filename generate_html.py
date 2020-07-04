@@ -9,8 +9,8 @@ old_stdout = sys.stdout
 stdout_io = StringIO()
 sys.stdout = stdout_io
 
-get_offline_data()  # debug only
-#get_online_data()
+#get_offline_data()  # debug only
+get_online_data()
 std_dates = get_standardize_dates()
 change_data_interpolation_type('slinear')
 
