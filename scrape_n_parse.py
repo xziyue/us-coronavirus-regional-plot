@@ -17,15 +17,49 @@ class CoronavirusInfo:
         self.x = self.matrix[:, 0]
         self.x_dt = [np.datetime64(datetime.utcfromtimestamp(tp)) for tp in self.x]
 
-        self.x_shift = self.x[0]
+        for i in range(1, self.matrix.shape[1]):
+            col = self._preprocess_column(self.matrix[:, i])
+            self.matrix[:, i] = col
 
         self._create_functions()
 
+    # we assume that coronavirus cases is always increasing/decreasing
+    # therefore, for better visualization, we interpolate consecutive days with same data
+    def _preprocess_column(self, col):
+
+        new_col = col.copy().astype(np.float)
+
+        pos = 0
+
+        while pos < col.size:
+            pos_val = col[pos]
+            next_pos = pos + 1
+
+            while next_pos < col.size:
+                if abs(col[next_pos] - pos_val) > 1.0e-3:
+                    break
+                next_pos += 1
+
+            if next_pos == pos + 1:
+                pos += 1
+            else:
+                left = max(0, pos - 1)
+                right = min(col.size - 1, next_pos + 1)
+                if left == 0 and right == col.size - 1:
+                    print(colored('problematic interpolation', 'red'))
+                tr_x = (self.x[left], self.x[right])
+                tr_y = (col[left], col[right])
+                func = interp1d(tr_x, tr_y)
+                new_value = func(self.x[pos : next_pos])
+                new_col[pos : next_pos] = new_value
+                pos = next_pos + 1
+
+        return new_col
+
     def _create_functions(self, **kwargs):
-        x_shifted = self.x - self.x_shift
         self.interp_funcs = []
         for col_id in range(1, self.matrix.shape[1]):
-            self.interp_funcs.append(interp1d(x_shifted, self.matrix[:, col_id], fill_value='extrapolate', **kwargs))
+            self.interp_funcs.append(interp1d(self.x, self.matrix[:, col_id], fill_value='extrapolate', **kwargs))
 
     def get_earliest(self):
         return self.x_dt[0]
@@ -38,7 +72,19 @@ class CoronavirusInfo:
             tp = tp.astype(datetime).timestamp()
         elif isinstance(tp, datetime):
             tp = tp.timestamp()
-        return self.interp_funcs[func_id](tp - self.x_shift)
+
+        '''
+        search_slot = np.searchsorted(self.x, tp, 'right') - 1
+        if search_slot < 0:
+            search_slot = 0
+        elif search_slot >= self.matrix.shape[0]:
+            search_slot = self.matrix.shape[0] - 1
+
+        return self.matrix[search_slot, func_id]
+        '''
+
+        #previous method, deprecated
+        return self.interp_funcs[func_id](tp)
 
     def get_num_tested(self, tp):
         return self._get_interpolated(tp, 0)
